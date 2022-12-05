@@ -10,20 +10,40 @@ use day_05::Move;
 fn main() {
     let input_filename = env::args().nth(1).expect("please supply an input filename");
     let input = fs::read_to_string(&input_filename).expect("failed to read input file");
-    let (mut stacks, moves) = parse_input(&input);
-    apply_moves(&mut stacks, &moves);
+
+    let (mut stacks_part_1, moves) = parse_input(&input);
+    let mut stacks_part_2 = stacks_part_1.clone();
+
+    apply_moves_9000(&mut stacks_part_1, &moves);
+    apply_moves_9001(&mut stacks_part_2, &moves);
+
     println!(
-        "The crates on the top of the stacks spell: {}",
-        top_of_stacks(&stacks)
+        "Appying the moves with CrateMover 9000 we get: {}",
+        top_of_stacks(&stacks_part_1)
+    );
+
+    println!(
+        "Appying the moves with CrateMover 9001 we get: {}",
+        top_of_stacks(&stacks_part_2)
     );
 }
 
-fn apply_moves(stacks: &mut [Vec<char>], moves: &Vec<Move>) {
+fn apply_moves_9000(stacks: &mut [Vec<char>], moves: &Vec<Move>) {
     for moov in moves {
         for _ in 0..moov.quantity {
             let krate = stacks[moov.from - 1].pop().expect("invalid move");
             stacks[moov.to - 1].push(krate)
         }
+    }
+}
+
+fn apply_moves_9001(stacks: &mut [Vec<char>], moves: &Vec<Move>) {
+    for moov in moves {
+        let from_len = stacks[moov.from - 1].len();
+        for i in (from_len - moov.quantity)..from_len {
+            stacks[moov.to - 1].push(stacks[moov.from - 1][i]);
+        }
+        stacks[moov.from - 1].truncate(from_len - moov.quantity);
     }
 }
 
@@ -103,9 +123,17 @@ fn test_parse_input() {
 }
 
 #[test]
-fn part_1() {
+fn crate_mover_9000() {
     let input = fs::read_to_string("test-input.txt").expect("failed to read input");
     let (mut stacks, moves) = parse_input(&input);
-    apply_moves(&mut stacks, &moves);
+    apply_moves_9000(&mut stacks, &moves);
     assert_eq!(top_of_stacks(&stacks), "CMZ");
+}
+
+#[test]
+fn crate_mover_9001() {
+    let input = fs::read_to_string("test-input.txt").expect("failed to read input");
+    let (mut stacks, moves) = parse_input(&input);
+    apply_moves_9001(&mut stacks, &moves);
+    assert_eq!(top_of_stacks(&stacks), "MCD");
 }
