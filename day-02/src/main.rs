@@ -93,20 +93,25 @@ fn parse_strategy_guide_part_2(input: &str) -> Vec<(RPS, RPS)> {
 
 fn play(strategy_guide: &str, parse: for<'r> fn(&'r str) -> Vec<(RPS, RPS)>) -> usize {
     let mut score = 0;
-    for (opponent, player) in parse(&strategy_guide) {
+    for (opponent, player) in parse(strategy_guide) {
         score += player.vs(&opponent) as usize + player as usize;
     }
     score
 }
 
-#[test]
-fn part_1() {
-    let input = fs::read_to_string("test-input.txt").expect("failed to read input");
-    assert_eq!(play(&input, parse_strategy_guide_part_1), 15);
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-#[test]
-fn part_2() {
-    let input = fs::read_to_string("test-input.txt").expect("failed to read input");
-    assert_eq!(play(&input, parse_strategy_guide_part_2), 12);
+    #[test]
+    fn part_1() {
+        let input = fs::read_to_string("test-input.txt").expect("failed to read input");
+        assert_eq!(play(&input, parse_strategy_guide_part_1), 15);
+    }
+
+    #[test]
+    fn part_2() {
+        let input = fs::read_to_string("test-input.txt").expect("failed to read input");
+        assert_eq!(play(&input, parse_strategy_guide_part_2), 12);
+    }
 }
