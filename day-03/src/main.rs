@@ -60,32 +60,37 @@ fn priority(type_char: char) -> usize {
     }) as usize
 }
 
-#[test]
-fn test_priority() {
-    let types_priorities = vec![
-        ('p', 16),
-        ('L', 38),
-        ('P', 42),
-        ('v', 22),
-        ('t', 20),
-        ('s', 19),
-    ];
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    for (type_char, expected_priority) in types_priorities {
-        assert_eq!(priority(type_char), expected_priority);
+    #[test]
+    fn test_priority() {
+        let types_priorities = vec![
+            ('p', 16),
+            ('L', 38),
+            ('P', 42),
+            ('v', 22),
+            ('t', 20),
+            ('s', 19),
+        ];
+
+        for (type_char, expected_priority) in types_priorities {
+            assert_eq!(priority(type_char), expected_priority);
+        }
     }
-}
 
-#[test]
-fn test_part_1() {
-    let input = fs::read_to_string("test-input.txt").expect("failed to read input");
-    let lines: Vec<_> = input.trim().split('\n').collect();
-    assert_eq!(part_1(&lines), 157);
-}
+    #[test]
+    fn test_part_1() {
+        let input = fs::read_to_string("test-input.txt").expect("failed to read input");
+        let lines: Vec<_> = input.trim().split('\n').collect();
+        assert_eq!(part_1(&lines), 157);
+    }
 
-#[test]
-fn test_part_2() {
-    let input = fs::read_to_string("test-input.txt").expect("failed to read input");
-    let lines: Vec<_> = input.trim().split('\n').collect();
-    assert_eq!(part_2(&lines), 70);
+    #[test]
+    fn test_part_2() {
+        let input = fs::read_to_string("test-input.txt").expect("failed to read input");
+        let lines: Vec<_> = input.trim().split('\n').collect();
+        assert_eq!(part_2(&lines), 70);
+    }
 }
