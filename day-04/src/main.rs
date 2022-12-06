@@ -52,20 +52,25 @@ fn overlapping(min_a: usize, max_a: usize, min_b: usize, max_b: usize) -> bool {
     !(max_a < min_b || max_b < min_a)
 }
 
-#[test]
-fn test_fully_contained() {
-    assert!(!fully_contained(2, 4, 6, 8));
-    assert!(fully_contained(2, 8, 3, 7));
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-#[test]
-fn test_overlapping() {
-    assert!(!overlapping(2, 4, 6, 8));
-    assert!(overlapping(5, 7, 7, 9));
-}
+    #[test]
+    fn test_fully_contained() {
+        assert!(!fully_contained(2, 4, 6, 8));
+        assert!(fully_contained(2, 8, 3, 7));
+    }
 
-#[test]
-fn test_count_overlaps() {
-    let input = fs::read_to_string("test-input.txt").expect("failed to read test input");
-    assert_eq!(count_overlaps(&input), (2, 4));
+    #[test]
+    fn test_overlapping() {
+        assert!(!overlapping(2, 4, 6, 8));
+        assert!(overlapping(5, 7, 7, 9));
+    }
+
+    #[test]
+    fn test_count_overlaps() {
+        let input = fs::read_to_string("test-input.txt").expect("failed to read test input");
+        assert_eq!(count_overlaps(&input), (2, 4));
+    }
 }
