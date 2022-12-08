@@ -2,16 +2,16 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Directory {
+pub struct Directory<'a> {
     size: Cell<usize>,
-    name: String,
+    name: &'a str,
 }
 
-impl Directory {
-    pub fn new(name: &str) -> Self {
+impl<'a> Directory<'a> {
+    pub fn new(name: &'a str) -> Self {
         Self {
             size: Cell::new(0),
-            name: name.to_owned(),
+            name,
         }
     }
 }
@@ -81,7 +81,7 @@ mod tests {
     macro_rules! directory {
         ($name:expr, $size:expr) => {
             Rc::new(Directory {
-                name: $name.to_owned(),
+                name: $name,
                 size: Cell::new($size),
             })
         };
