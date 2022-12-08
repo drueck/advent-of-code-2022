@@ -54,25 +54,23 @@ pub fn build_directories(input: &str) -> Vec<Rc<Directory>> {
     directories
 }
 
-// get the sum of the sizes of the directories that contain at most 100,000 bytes
+// Computes the sum of the sizes of the directories that contain at least 100,000 bytes.
 pub fn part_1(directories: &[Rc<Directory>]) -> usize {
-    directories
-        .iter()
-        .map(|d| d.size.get())
-        .filter(|size| *size <= 100_000)
-        .sum()
+    directories.iter().fold(0, |sum, d| match d.size.get() {
+        size if size <= 100_000 => sum + size,
+        _ => sum,
+    })
 }
 
-// size of the smallest directory that is at least
+// Computes the size of the directory that if deleted would free up the needed space.
 pub fn part_2(directories: &[Rc<Directory>]) -> usize {
-    let total_used = directories[0].size.get();
-    let needed = 30_000_000 - (70_000_000 - total_used);
+    let needed = 30_000_000 - (70_000_000 - directories[0].size.get());
     directories
         .iter()
-        .map(|d| d.size.get())
-        .filter(|size| *size >= needed)
-        .min()
-        .expect("we expect at least one directory that meets the criteria")
+        .fold(usize::MAX, |min, d| match d.size.get() {
+            size if size >= needed && size < min => size,
+            _ => min,
+        })
 }
 
 #[cfg(test)]

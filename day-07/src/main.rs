@@ -12,7 +12,7 @@ fn main() {
     let directories = build_directories(&input);
 
     println!(
-        "The sum of directories with at most 100000 bytes is: {}",
+        "The sum of the sizes of the directories with at most 100,000 bytes is: {}",
         part_1(&directories)
     );
 
