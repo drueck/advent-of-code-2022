@@ -33,58 +33,41 @@ fn parse_input(input: &str) -> Vec<&[u8]> {
 
 fn visible_tree_locations(forest: &[&[u8]]) -> HashSet<(usize, usize)> {
     let mut visible: HashSet<(usize, usize)> = HashSet::new();
+    let height = forest.len();
+    let width = forest[0].len();
 
-    // from the top
-    for x in 0..forest[0].len() {
-        let mut tallest_so_far = b'0' - 1;
-        // the bottom ones are always visible, and we'll catch them when we start from the bottom
-        for y in 0..forest.len() - 1 {
-            let height = forest[y][x];
-            if height > tallest_so_far {
-                tallest_so_far = height;
-                visible.insert((x, y));
+    // TODO: Can I make this just one pattern?
+    macro_rules! find_visible {
+        ($forest:ident, $visible:ident, x in $outer:expr, y in $inner:expr) => {{
+            for x in $outer {
+                let mut tallest_so_far = b'0' - 1;
+                for y in $inner {
+                    let height = forest[y][x];
+                    if height > tallest_so_far {
+                        tallest_so_far = height;
+                        visible.insert((x, y));
+                    }
+                }
             }
-        }
+        }};
+        ($forest:ident, $visible:ident, y in $outer:expr, x in $inner:expr) => {{
+            for y in $outer {
+                let mut tallest_so_far = b'0' - 1;
+                for x in $inner {
+                    let height = forest[y][x];
+                    if height > tallest_so_far {
+                        tallest_so_far = height;
+                        visible.insert((x, y));
+                    }
+                }
+            }
+        }};
     }
 
-    // from the right
-    for y in 0..forest.len() {
-        let mut tallest_so_far = b'0' - 1;
-        // the left ones are always visible, we'll catch them when we start from the left
-        for x in (1..forest[0].len()).rev() {
-            let height = forest[y][x];
-            if height > tallest_so_far {
-                tallest_so_far = height;
-                visible.insert((x, y));
-            }
-        }
-    }
-
-    // from the bottom
-    for x in 0..forest[0].len() {
-        let mut tallest_so_far = b'0' - 1;
-        // the top ones are always visible, and we already captured those
-        for y in (1..forest.len()).rev() {
-            let height = forest[y][x];
-            if height > tallest_so_far {
-                tallest_so_far = height;
-                visible.insert((x, y));
-            }
-        }
-    }
-
-    // from the left
-    for y in 0..forest.len() {
-        let mut tallest_so_far = b'0' - 1;
-        // the right ones are always visible, and we already captured those
-        for x in 0..forest[0].len() - 1 {
-            let height = forest[y][x];
-            if height > tallest_so_far {
-                tallest_so_far = height;
-                visible.insert((x, y));
-            }
-        }
-    }
+    find_visible![forest, visible, x in 0..width, y in 0..height - 1]; // top
+    find_visible![forest, visible, y in 0..height, x in (1..width).rev()]; // right
+    find_visible![forest, visible, x in 0..width, y in (1..height).rev()]; // bottom
+    find_visible![forest, visible, y in 0..height, x in 0..width]; // left
 
     visible
 }
@@ -94,38 +77,34 @@ fn scenic_score(forest: &[&[u8]], x: usize, y: usize) -> usize {
     let height = forest.len();
     let width = forest[0].len();
 
-    // looking up
-    let mut visible_up = 0;
-    for yi in (0..y).rev() {
-        visible_up += 1;
-        if forest[yi][x] >= viewing_height {
-            break;
-        }
+    // TODO: Can I make this just one pattern?
+    macro_rules! count_visible {
+        ($x:ident, y in $y_range:expr) => {{
+            let mut visible = 0;
+            for yi in $y_range {
+                visible += 1;
+                if forest[yi][$x] >= viewing_height {
+                    break;
+                }
+            }
+            visible
+        }};
+        ($y:ident, x in $x_range:expr) => {{
+            let mut visible = 0;
+            for xi in $x_range {
+                visible += 1;
+                if forest[y][xi] >= viewing_height {
+                    break;
+                }
+            }
+            visible
+        }};
     }
 
-    let mut visible_right = 0;
-    for xi in min(x + 1, width)..width {
-        visible_right += 1;
-        if forest[y][xi] >= viewing_height {
-            break;
-        }
-    }
-
-    let mut visible_down = 0;
-    for yi in min(y + 1, height)..height {
-        visible_down += 1;
-        if forest[yi][x] >= viewing_height {
-            break;
-        }
-    }
-
-    let mut visible_left = 0;
-    for xi in (0..x).rev() {
-        visible_left += 1;
-        if forest[y][xi] >= viewing_height {
-            break;
-        }
-    }
+    let visible_up = count_visible![x, y in (0..y).rev()];
+    let visible_right = count_visible![y, x in min(x + 1, width)..width];
+    let visible_down = count_visible![x, y in min(y + 1, height)..height];
+    let visible_left = count_visible![y, x in (0..x).rev()];
 
     visible_up * visible_right * visible_down * visible_left
 }
@@ -156,31 +135,6 @@ mod tests {
         let forest = parse_input(&input);
         let locations = visible_tree_locations(&forest);
 
-        let expected_locations = HashSet::from([
-            (0, 0),
-            (0, 1),
-            (0, 2),
-            (0, 3),
-            (0, 4),
-            (1, 0),
-            (2, 0),
-            (3, 0),
-            (4, 0),
-            (4, 1),
-            (4, 2),
-            (4, 3),
-            (4, 4),
-            (1, 4),
-            (2, 4),
-            (3, 4),
-            (1, 1), // top left 5
-            (2, 1), // top middle 5
-            (1, 2), // left middle 5
-            (3, 2), // right middle 3
-            (2, 3), // bottom row middle 5
-        ]);
-
-        assert_eq!(locations, expected_locations);
         assert_eq!(locations.len(), 21);
     }
 
