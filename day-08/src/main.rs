@@ -2,6 +2,7 @@
 // https://adventofcode.com/2022/day/8
 // Usage: `cargo run <input-file>`
 
+use std::cmp::min;
 use std::collections::HashSet;
 use std::env;
 use std::fs;
@@ -10,11 +11,15 @@ fn main() {
     let input_filename = env::args().nth(1).expect("please supply an input filename");
     let input = fs::read_to_string(&input_filename).expect("failed to read input file");
     let forest = parse_input(&input);
-    let locations = visible_tree_locations(&forest);
 
     println!(
         "The number of trees visible from the outside are: {}",
-        locations.len()
+        visible_tree_locations(&forest).len()
+    );
+
+    println!(
+        "The best scenic score in the forest is: {}",
+        best_scenic_score(&forest)
     );
 }
 
@@ -84,6 +89,63 @@ fn visible_tree_locations(forest: &[&[u8]]) -> HashSet<(usize, usize)> {
     visible
 }
 
+fn scenic_score(forest: &[&[u8]], x: usize, y: usize) -> usize {
+    let viewing_height = forest[y][x];
+    let height = forest.len();
+    let width = forest[0].len();
+
+    // looking up
+    let mut visible_up = 0;
+    for yi in (0..y).rev() {
+        visible_up += 1;
+        if forest[yi][x] >= viewing_height {
+            break;
+        }
+    }
+
+    let mut visible_right = 0;
+    for xi in min(x + 1, width)..width {
+        visible_right += 1;
+        if forest[y][xi] >= viewing_height {
+            break;
+        }
+    }
+
+    let mut visible_down = 0;
+    for yi in min(y + 1, height)..height {
+        visible_down += 1;
+        if forest[yi][x] >= viewing_height {
+            break;
+        }
+    }
+
+    let mut visible_left = 0;
+    for xi in (0..x).rev() {
+        visible_left += 1;
+        if forest[y][xi] >= viewing_height {
+            break;
+        }
+    }
+
+    visible_up * visible_right * visible_down * visible_left
+}
+
+fn best_scenic_score(forest: &[&[u8]]) -> usize {
+    let mut best = 0;
+    let width = forest[0].len();
+
+    for y in 0..forest.len() {
+        for x in 0..width {
+            let score = scenic_score(forest, x, y);
+            if score > best {
+                best = score;
+            }
+        }
+    }
+
+    best
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -120,5 +182,22 @@ mod tests {
 
         assert_eq!(locations, expected_locations);
         assert_eq!(locations.len(), 21);
+    }
+
+    #[test]
+    fn test_scenic_score() {
+        let input = fs::read_to_string("test-input.txt").expect("failed to read test input");
+        let forest = parse_input(&input);
+
+        assert_eq!(scenic_score(&forest, 2, 1), 4);
+        assert_eq!(scenic_score(&forest, 2, 3), 8);
+    }
+
+    #[test]
+    fn test_best_scenic_score() {
+        let input = fs::read_to_string("test-input.txt").expect("failed to read test input");
+        let forest = parse_input(&input);
+
+        assert_eq!(best_scenic_score(&forest), 8);
     }
 }
