@@ -11,6 +11,8 @@ fn main() {
     let instructions = parse_instructions(&input);
 
     println!("The answer to part 1 is: {}", part_1(&instructions));
+
+    part_2(&instructions);
 }
 
 enum Instruction {
@@ -52,6 +54,40 @@ fn part_1(instructions: &[Instruction]) -> isize {
         }
     }
     signal_strengths
+}
+
+fn part_2(instructions: &[Instruction]) {
+    let mut x = 1;
+    let mut cycles = 1;
+    let mut crt = [b' '; 240];
+
+    for instruction in instructions {
+        match instruction {
+            Instruction::Noop => {
+                maybe_draw(&mut crt, cycles, x);
+                cycles += 1;
+            }
+            Instruction::Addx(n) => {
+                maybe_draw(&mut crt, cycles, x);
+                cycles += 1;
+                maybe_draw(&mut crt, cycles, x);
+                cycles += 1;
+                x += n;
+            }
+        }
+    }
+
+    for line in crt.chunks_exact(40) {
+        println!("{}", std::str::from_utf8(line).unwrap());
+    }
+}
+
+fn maybe_draw(crt: &mut [u8; 240], cycles: isize, x: isize) {
+    assert!(cycles >= 0);
+    let row_index = (cycles % 40) - 1;
+    if x - 1 <= row_index && row_index <= x + 1 {
+        crt[cycles as usize - 1] = b'#';
+    }
 }
 
 fn maybe_record_signal_strength(signal_strengths: &mut isize, cycles: isize, x: isize) {
