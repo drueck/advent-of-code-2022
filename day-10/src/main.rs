@@ -5,14 +5,20 @@
 use std::env;
 use std::fs;
 
+const CRT_LINE_LENGTH: usize = 40;
+const CRT_LINES: usize = 6;
+
 fn main() {
     let input_filename = env::args().nth(1).expect("please supply an input filename");
     let input = fs::read_to_string(&input_filename).expect("failed to read input file");
     let instructions = parse_instructions(&input);
 
-    println!("The answer to part 1 is: {}", part_1(&instructions));
+    println!(
+        "Sum of signal strengths: {}",
+        sum_of_signal_strengths(&instructions)
+    );
 
-    part_2(&instructions);
+    render_crt(&instructions);
 }
 
 enum Instruction {
@@ -33,66 +39,54 @@ fn parse_instructions(s: &str) -> Vec<Instruction> {
     s.trim().split('\n').map(Instruction::new).collect()
 }
 
-fn part_1(instructions: &[Instruction]) -> isize {
+fn execute<F>(instructions: &[Instruction], mut side_effect: F)
+where
+    F: FnMut(isize, isize),
+{
     let mut x = 1;
-    let mut signal_strengths = 0;
     let mut cycles = 1;
 
     for instruction in instructions {
         match instruction {
             Instruction::Noop => {
-                maybe_record_signal_strength(&mut signal_strengths, cycles, x);
+                side_effect(cycles, x);
                 cycles += 1;
             }
             Instruction::Addx(n) => {
-                maybe_record_signal_strength(&mut signal_strengths, cycles, x);
+                side_effect(cycles, x);
                 cycles += 1;
-                maybe_record_signal_strength(&mut signal_strengths, cycles, x);
+                side_effect(cycles, x);
                 x += n;
                 cycles += 1;
             }
         }
     }
+}
+
+fn sum_of_signal_strengths(instructions: &[Instruction]) -> isize {
+    let mut signal_strengths = 0;
+
+    execute(instructions, |cycles, x| {
+        if cycles % 40 == 20 {
+            signal_strengths += cycles * x;
+        }
+    });
+
     signal_strengths
 }
 
-fn part_2(instructions: &[Instruction]) {
-    let mut x = 1;
-    let mut cycles = 1;
-    let mut crt = [b' '; 240];
+fn render_crt(instructions: &[Instruction]) {
+    let mut crt = [b' '; CRT_LINE_LENGTH * CRT_LINES];
 
-    for instruction in instructions {
-        match instruction {
-            Instruction::Noop => {
-                maybe_draw(&mut crt, cycles, x);
-                cycles += 1;
-            }
-            Instruction::Addx(n) => {
-                maybe_draw(&mut crt, cycles, x);
-                cycles += 1;
-                maybe_draw(&mut crt, cycles, x);
-                cycles += 1;
-                x += n;
-            }
+    execute(instructions, |cycles, x| {
+        let draw_index = (cycles % (CRT_LINE_LENGTH as isize)) - 1;
+        if x - 1 <= draw_index && draw_index <= x + 1 {
+            crt[cycles as usize - 1] = b'#';
         }
-    }
+    });
 
     for line in crt.chunks_exact(40) {
         println!("{}", std::str::from_utf8(line).unwrap());
-    }
-}
-
-fn maybe_draw(crt: &mut [u8; 240], cycles: isize, x: isize) {
-    assert!(cycles >= 0);
-    let row_index = (cycles % 40) - 1;
-    if x - 1 <= row_index && row_index <= x + 1 {
-        crt[cycles as usize - 1] = b'#';
-    }
-}
-
-fn maybe_record_signal_strength(signal_strengths: &mut isize, cycles: isize, x: isize) {
-    if cycles % 40 == 20 {
-        *signal_strengths += cycles * x;
     }
 }
 
@@ -101,9 +95,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_part_1() {
+    fn test_sum_of_signal_strengths() {
         let input = fs::read_to_string("test-input.txt").unwrap();
         let instructions = parse_instructions(&input);
-        assert_eq!(part_1(&instructions), 13140);
+        assert_eq!(sum_of_signal_strengths(&instructions), 13140);
     }
 }
