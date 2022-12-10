@@ -93,17 +93,22 @@ fn unique_long_tail_locations(moves: &[Move]) -> usize {
 }
 
 fn tail_move_from_diff(x: isize, y: isize) -> (isize, isize) {
-    assert!(x.abs() < 3);
-    assert!(y.abs() < 3);
-
     match (x, y) {
-        (2, 2) => (1, 1),
-        (-2, -2) => (-1, -1),
-        (2, n) => (1, n),
-        (-2, n) => (-1, n),
-        (n, 2) => (n, 1),
-        (n, -2) => (n, -1),
-        _ => (0, 0),
+        // straight lines
+        (0, 2) => (0, 1),   // up
+        (2, 0) => (1, 0),   // right
+        (0, -2) => (0, -1), // down
+        (-2, 0) => (-1, 0), // left
+
+        // touching or adjacent
+        (0, 0) => (0, 0),
+        (x, y) if x.abs() < 2 && y.abs() < 2 => (0, 0),
+
+        // diagonals (could be -2, -1, 1, 2)
+        (x, y) => {
+            assert!(x.abs() < 3 && y.abs() < 3);
+            (x / x.abs(), y / y.abs()) // convert to 1 or -1
+        }
     }
 }
 
@@ -120,13 +125,6 @@ mod tests {
 
     #[test]
     fn test_unique_long_tail_locations() {
-        let input = fs::read_to_string("test-input.txt").expect("failed to read test input");
-        let moves = parse_head_moves(&input);
-        assert_eq!(unique_long_tail_locations(&moves), 1);
-    }
-
-    #[test]
-    fn test_longer_unique_tail_locations() {
         let input = fs::read_to_string("test-input-part-2.txt").expect("failed to read test input");
         let moves = parse_head_moves(&input);
         assert_eq!(unique_long_tail_locations(&moves), 36);
