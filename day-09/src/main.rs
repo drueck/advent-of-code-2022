@@ -6,8 +6,6 @@ use std::collections::HashSet;
 use std::env;
 use std::fs;
 
-const NUM_TAILS: usize = 9;
-
 fn main() {
     let input_filename = env::args().nth(1).expect("please supply an input filename");
     let input = fs::read_to_string(&input_filename).expect("failed to read input file");
@@ -15,12 +13,12 @@ fn main() {
 
     println!(
         "Unique tail locations: {}",
-        unique_tail_locations(&head_moves)
+        unique_tail_locations(&head_moves, 2)
     );
 
     println!(
         "Unique long tail locations: {}",
-        unique_long_tail_locations(&head_moves)
+        unique_tail_locations(&head_moves, 10)
     );
 }
 
@@ -49,67 +47,37 @@ fn parse_head_moves(input: &str) -> Vec<Move> {
     input.trim().split('\n').map(Move::new).collect()
 }
 
-fn unique_tail_locations(moves: &[Move]) -> usize {
-    let mut head = (0, 0);
-    let mut tail = (0, 0);
+fn unique_tail_locations(moves: &[Move], num_knots: usize) -> usize {
+    let mut knots = vec![(0, 0); num_knots];
     let mut locations = HashSet::new();
 
     for m in moves {
         for _ in 0..m.count {
-            head.0 += m.offset.0;
-            head.1 += m.offset.1;
-            let tail_move = tail_move_from_diff(head.0 - tail.0, head.1 - tail.1);
-            tail.0 += tail_move.0;
-            tail.1 += tail_move.1;
-            locations.insert(tail);
-        }
-    }
-
-    locations.len()
-}
-
-fn unique_long_tail_locations(moves: &[Move]) -> usize {
-    let mut tails = [(0, 0); NUM_TAILS];
-    let mut locations = HashSet::new();
-    let mut head = (0, 0);
-
-    for m in moves {
-        for _ in 0..m.count {
-            head.0 += m.offset.0;
-            head.1 += m.offset.1;
-            let mut prev = head;
-
-            #[allow(clippy::needless_range_loop)]
-            for i in 0..NUM_TAILS {
-                let tail_move = tail_move_from_diff(prev.0 - tails[i].0, prev.1 - tails[i].1);
-                tails[i] = (tails[i].0 + tail_move.0, tails[i].1 + tail_move.1);
-                prev = tails[i];
+            knots[0] = (knots[0].0 + m.offset.0, knots[0].1 + m.offset.1);
+            for i in 1..num_knots {
+                let tail_move = tail_move(knots[i - 1], knots[i]);
+                knots[i] = (knots[i].0 + tail_move.0, knots[i].1 + tail_move.1);
             }
-            locations.insert(tails[NUM_TAILS - 1]);
+            locations.insert(knots[num_knots - 1]);
         }
     }
 
     locations.len()
 }
 
-fn tail_move_from_diff(x: isize, y: isize) -> (isize, isize) {
-    match (x, y) {
-        // straight lines
-        (0, 2) => (0, 1),   // up
-        (2, 0) => (1, 0),   // right
-        (0, -2) => (0, -1), // down
-        (-2, 0) => (-1, 0), // left
-
-        // touching or adjacent
-        (0, 0) => (0, 0),
-        (x, y) if x.abs() < 2 && y.abs() < 2 => (0, 0),
-
-        // diagonals (could be -2, -1, 1, 2)
-        (x, y) => {
-            assert!(x.abs() < 3 && y.abs() < 3);
-            (x / x.abs(), y / y.abs()) // convert to 1 or -1
-        }
+fn tail_move(head: (isize, isize), tail: (isize, isize)) -> (isize, isize) {
+    match (head.0 - tail.0, head.1 - tail.1) {
+        (x, y) if x.abs() > 1 || y.abs() > 1 => (sign(x), sign(y)),
+        _ => (0, 0),
     }
+}
+
+// convert into -1, 0, or 1
+fn sign(val: isize) -> isize {
+    if val == 0 {
+        return val;
+    }
+    val / val.abs()
 }
 
 #[cfg(test)]
@@ -120,13 +88,13 @@ mod tests {
     fn test_unique_tail_locations() {
         let input = fs::read_to_string("test-input.txt").expect("failed to read test input");
         let moves = parse_head_moves(&input);
-        assert_eq!(unique_tail_locations(&moves), 13);
+        assert_eq!(unique_tail_locations(&moves, 2), 13);
     }
 
     #[test]
     fn test_unique_long_tail_locations() {
         let input = fs::read_to_string("test-input-part-2.txt").expect("failed to read test input");
         let moves = parse_head_moves(&input);
-        assert_eq!(unique_long_tail_locations(&moves), 36);
+        assert_eq!(unique_tail_locations(&moves, 10), 36);
     }
 }
