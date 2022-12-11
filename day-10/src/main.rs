@@ -47,14 +47,12 @@ where
     let mut cycles = 1;
 
     for instruction in instructions {
+        side_effect(cycles, x);
+        cycles += 1;
+
         match instruction {
-            Instruction::Noop => {
-                side_effect(cycles, x);
-                cycles += 1;
-            }
+            Instruction::Noop => {}
             Instruction::Addx(n) => {
-                side_effect(cycles, x);
-                cycles += 1;
                 side_effect(cycles, x);
                 x += n;
                 cycles += 1;
