@@ -21,11 +21,12 @@ pub struct Operation {
 #[derive(PartialEq, Eq, Debug)]
 pub struct Monkey {
     number: usize,
-    items: VecDeque<usize>,
+    pub items: VecDeque<usize>,
     operation: Operation,
     test_divisor: usize,
     true_monkey: usize,
     false_monkey: usize,
+    pub inspections: usize,
 }
 
 impl Monkey {
@@ -84,7 +85,43 @@ impl Monkey {
             test_divisor,
             true_monkey,
             false_monkey,
+            inspections: 0,
         }
+    }
+
+    // returns (item, monkey) where the item is the worry level
+    // of the first item in the queue after the inspection and
+    // your relief factor being applied, and the monkey is which
+    // monkey to which to toss the item.
+    pub fn inspect_and_throw(&mut self) -> Option<(usize, usize)> {
+        let mut item = self.items.pop_front()?;
+        self.inspections += 1;
+
+        let operand = match self.operation.operand {
+            Operand::Old => item,
+            Operand::Literal(n) => n,
+        };
+        item = match self.operation.operator {
+            Operator::Plus => {
+                // println!("({item} + {operand}) / 3");
+                (item + operand) / 3
+            }
+            Operator::Times => {
+                // println!("{item} * ({operand} / 3)");
+                (item * operand) / 3
+            }
+        };
+
+        let target_monkey = match item % self.test_divisor {
+            0 => self.true_monkey,
+            _ => self.false_monkey,
+        };
+
+        Some((item, target_monkey))
+    }
+
+    pub fn catch(&mut self, item: usize) {
+        self.items.push_back(item);
     }
 }
 
@@ -110,6 +147,7 @@ mod tests {
                 test_divisor: 23,
                 true_monkey: 2,
                 false_monkey: 3,
+                inspections: 0,
             },
             Monkey {
                 number: 1,
@@ -121,6 +159,7 @@ mod tests {
                 test_divisor: 19,
                 true_monkey: 2,
                 false_monkey: 0,
+                inspections: 0,
             },
             Monkey {
                 number: 2,
@@ -132,6 +171,7 @@ mod tests {
                 test_divisor: 13,
                 true_monkey: 1,
                 false_monkey: 3,
+                inspections: 0,
             },
             Monkey {
                 number: 3,
@@ -143,9 +183,31 @@ mod tests {
                 test_divisor: 17,
                 true_monkey: 0,
                 false_monkey: 1,
+                inspections: 0,
             },
         ];
 
         assert_eq!(monkeys, expected_monkeys);
+    }
+
+    #[test]
+    fn test_inspect_and_throw() {
+        let mut monkey = Monkey {
+            number: 0,
+            items: VecDeque::from([79, 98]),
+            operation: Operation {
+                operator: Operator::Times,
+                operand: Operand::Literal(19),
+            },
+            test_divisor: 23,
+            true_monkey: 2,
+            false_monkey: 3,
+            inspections: 0,
+        };
+
+        assert_eq!(monkey.inspect_and_throw(), Some((500, 3)));
+        assert_eq!(monkey.inspect_and_throw(), Some((620, 3)));
+        assert_eq!(monkey.inspect_and_throw(), None);
+        assert_eq!(monkey.inspections, 2);
     }
 }
