@@ -1,36 +1,35 @@
 use std::collections::VecDeque;
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum Operator {
     Plus,
     Times,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum Operand {
     Old,
     Literal(usize),
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub struct Operation {
     pub operator: Operator,
     pub operand: Operand,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Monkey {
     number: usize,
     pub items: VecDeque<usize>,
     operation: Operation,
-    test_divisor: usize,
+    pub test_divisor: usize,
     true_monkey: usize,
     false_monkey: usize,
     pub inspections: usize,
 }
 
 impl Monkey {
-    // :sweat_smile: this would be so much cleaner in elixir!
     pub fn new(s: &str) -> Self {
         let mut lines = s.split('\n');
 
@@ -91,9 +90,12 @@ impl Monkey {
 
     // returns (item, monkey) where the item is the worry level
     // of the first item in the queue after the inspection and
-    // your relief factor being applied, and the monkey is which
-    // monkey to which to toss the item.
-    pub fn inspect_and_throw(&mut self) -> Option<(usize, usize)> {
+    // manage_worry being applied, and the monkey is the monkey
+    // to whom the item should be tossed
+    pub fn inspect_and_throw<F>(&mut self, manage_worry: F) -> Option<(usize, usize)>
+    where
+        F: Fn(usize) -> usize,
+    {
         let mut item = self.items.pop_front()?;
         self.inspections += 1;
 
@@ -102,15 +104,11 @@ impl Monkey {
             Operand::Literal(n) => n,
         };
         item = match self.operation.operator {
-            Operator::Plus => {
-                // println!("({item} + {operand}) / 3");
-                (item + operand) / 3
-            }
-            Operator::Times => {
-                // println!("{item} * ({operand} / 3)");
-                (item * operand) / 3
-            }
+            Operator::Plus => item + operand,
+            Operator::Times => item * operand,
         };
+
+        item = manage_worry(item);
 
         let target_monkey = match item % self.test_divisor {
             0 => self.true_monkey,
@@ -205,9 +203,13 @@ mod tests {
             inspections: 0,
         };
 
-        assert_eq!(monkey.inspect_and_throw(), Some((500, 3)));
-        assert_eq!(monkey.inspect_and_throw(), Some((620, 3)));
-        assert_eq!(monkey.inspect_and_throw(), None);
+        fn divide_by_three(worry: usize) -> usize {
+            worry / 3
+        }
+
+        assert_eq!(monkey.inspect_and_throw(divide_by_three), Some((500, 3)));
+        assert_eq!(monkey.inspect_and_throw(divide_by_three), Some((620, 3)));
+        assert_eq!(monkey.inspect_and_throw(divide_by_three), None);
         assert_eq!(monkey.inspections, 2);
     }
 }

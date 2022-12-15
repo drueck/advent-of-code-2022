@@ -9,37 +9,59 @@ use std::fs;
 fn main() {
     let input_filename = env::args().nth(1).expect("please supply an input filename");
     let input = fs::read_to_string(&input_filename).expect("failed to read input file");
-    let mut monkeys: Vec<_> = input.trim().split("\n\n").map(Monkey::new).collect();
+    let mut monkeys_part_1: Vec<_> = input.trim().split("\n\n").map(Monkey::new).collect();
+    let mut monkeys_part_2 = monkeys_part_1.clone();
 
-    for round in 0..20 {
-        println!("Round {}", round + 1);
+    let common_divisor: usize = monkeys_part_2.iter().map(|m| m.test_divisor).product();
+
+    let part_1 = play_keep_away(&mut monkeys_part_1, 20, &|worry| worry / 3);
+    let part_2 = play_keep_away(&mut monkeys_part_2, 10_000, &|worry| worry % common_divisor);
+
+    println!("The answer for part 1 is {part_1}");
+    println!("The answer for part 2 is {part_2}");
+}
+
+fn play_keep_away<F>(monkeys: &mut [Monkey], rounds: usize, manage_worry: &F) -> usize
+where
+    F: Fn(usize) -> usize,
+{
+    for _round in 0..rounds {
         for i in 0..monkeys.len() {
-            println!("Monkey {i}");
-            while let Some((item, target_monkey)) = monkeys[i].inspect_and_throw() {
-                println!("Monkey {i} throwing {item} to {target_monkey}");
+            while let Some((item, target_monkey)) = monkeys[i].inspect_and_throw(manage_worry) {
                 monkeys[target_monkey].catch(item);
             }
         }
-
-        println!(
-            "After round {}, the monkeys are holding these items",
-            round + 1
-        );
-        for (i, monkey) in monkeys[..].iter().enumerate() {
-            println!("Monkey {i} was holding {:?}", &monkey.items);
-        }
-    }
-
-    for (i, monkey) in monkeys.iter().enumerate() {
-        println!("Monkey {} inspected items {} times", i, monkey.inspections);
     }
 
     monkeys.sort_by_key(|m| m.inspections);
-    let part_1: usize = monkeys
+    monkeys
         .iter()
         .rev()
         .take(2)
         .map(|m| m.inspections)
-        .product();
-    println!("The answer for part 1 is {part_1}");
+        .product()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_part_1() {
+        let input = fs::read_to_string("test-input.txt").expect("failed to read input file");
+        let mut monkeys: Vec<_> = input.trim().split("\n\n").map(Monkey::new).collect();
+        assert_eq!(play_keep_away(&mut monkeys, 20, &|worry| worry / 3), 10_605);
+    }
+
+    #[test]
+    fn test_part_2() {
+        let input = fs::read_to_string("test-input.txt").expect("failed to read input file");
+        let mut monkeys: Vec<_> = input.trim().split("\n\n").map(Monkey::new).collect();
+        let common_divisor: usize = monkeys.iter().map(|m| m.test_divisor).product();
+
+        assert_eq!(
+            play_keep_away(&mut monkeys, 10_000, &|worry| worry % common_divisor),
+            2_713_310_158
+        );
+    }
 }
