@@ -11,66 +11,78 @@ fn main() {
     let input = fs::read_to_string(&input_filename).expect("failed to read input file");
     let grid: Vec<&[u8]> = input.trim().split('\n').map(|s| s.as_bytes()).collect();
 
-    println!(
-        "The quickest route from start to end is {}",
-        fewest_steps(&grid)
-    );
-}
+    let start = locations(&grid, 'S')[0];
+    let end = locations(&grid, 'E')[0];
+    let mut aes = locations(&grid, 'a');
+    aes.push(start);
 
-fn fewest_steps(grid: &[&[u8]]) -> usize {
-    let mut queue = VecDeque::new();
-    let mut steps = HashMap::new();
-    let mut end = (0, 0);
-
-    // - find the starting space
-    for (rowi, row) in grid.iter().enumerate() {
-        for (coli, val) in row.iter().enumerate() {
-            match *val {
-                b'S' => {
-                    steps.insert((rowi, coli), 0);
-                    queue.push_back((rowi, coli));
-                }
-                b'E' => {
-                    end = (rowi, coli);
-                }
-                _ => {
-                    continue;
-                }
-            }
+    match fewest_steps(&grid, start, end) {
+        Some(n) => {
+            println!("The shortest route from start to end is {n} steps",);
+        }
+        None => {
+            println!("Couldn't find a route from the start to the end!");
         }
     }
 
+    let shortest_a_to_end = aes
+        .into_iter()
+        .flat_map(|a| fewest_steps(&grid, a, end))
+        .min()
+        .unwrap();
+
+    println!(
+        "The shortest route from any a to the end is {} steps",
+        shortest_a_to_end
+    );
+}
+
+// returns the locations of the given char in the grid
+fn locations(grid: &[&[u8]], c: char) -> Vec<(usize, usize)> {
+    let mut results = vec![];
+    for (rowi, row) in grid.iter().enumerate() {
+        for (coli, val) in row.iter().enumerate() {
+            if *val == c as u8 {
+                results.push((rowi, coli));
+            }
+        }
+    }
+    results
+}
+
+fn fewest_steps(grid: &[&[u8]], start: (usize, usize), end: (usize, usize)) -> Option<usize> {
+    let mut queue = VecDeque::new();
+    let mut steps = HashMap::new();
     let mut possible_moves: [Option<(usize, usize)>; 4] = [None; 4];
+
+    steps.insert(start, 0);
+    queue.push_back(start);
 
     while let Some((row, col)) = queue.pop_front() {
         if (row, col) == end {
             continue;
         }
 
-        let next_steps = steps[&(row, col)] + 1;
+        let current_steps: usize = steps[&(row, col)] + 1;
 
         update_possible_moves(grid, &mut possible_moves, row, col);
 
-        for (adj_row, adj_col) in possible_moves.iter().flatten() {
-            match steps.get_mut(&(*adj_row, *adj_col)) {
-                // if we've explored this space before, update the cheapest
-                // path if the current one is cheaper
+        for (adj_row, adj_col) in possible_moves.into_iter().flatten() {
+            match steps.get_mut(&(adj_row, adj_col)) {
                 Some(prev_steps) => {
-                    if next_steps < *prev_steps {
-                        *prev_steps = next_steps;
+                    if current_steps < *prev_steps {
+                        *prev_steps = current_steps;
                     }
                 }
-                // if we've never explored this space, record the current steps
-                // and add it to the queue to explore later
                 None => {
-                    steps.insert((*adj_row, *adj_col), next_steps);
-                    queue.push_back((*adj_row, *adj_col));
+                    steps.insert((adj_row, adj_col), current_steps);
+                    queue.push_back((adj_row, adj_col));
                 }
             }
         }
     }
 
-    steps[&end]
+    steps.remove(&end)
 }
 
 fn update_possible_moves(
@@ -81,10 +93,7 @@ fn update_possible_moves(
 ) {
     let max_row_index = grid.len() - 1;
     let max_col_index = grid[0].len() - 1;
-    let here = match grid[row][col] {
-        b'S' => b'a',
-        n => n,
-    };
+    let here = grid[row][col];
 
     // top
     possible_moves[0] = match row > 0 && legal_move(here as i8, grid[row - 1][col] as i8) {
@@ -113,10 +122,16 @@ fn update_possible_moves(
     };
 }
 
+fn translate(height: i8) -> i8 {
+    match height as u8 {
+        b'S' => b'a' as i8,
+        b'E' => b'z' as i8,
+        n => n as i8,
+    }
+}
+
 fn legal_move(from: i8, to: i8) -> bool {
-    let adj_from = if from as u8 == b'S' { b'a' as i8 } else { from };
-    let adj_to = if to as u8 == b'E' { b'z' as i8 } else { to };
-    adj_to - adj_from < 2
+    translate(to) - translate(from) < 2
 }
 
 #[cfg(test)]
@@ -124,10 +139,28 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_fewest_steps() {
+    fn test_part_1() {
         let input = fs::read_to_string("test-input.txt").expect("failed to read input file");
         let grid: Vec<&[u8]> = input.trim().split('\n').map(|s| s.as_bytes()).collect();
-        assert_eq!(fewest_steps(&grid), 31);
+        let start = locations(&grid, 'S')[0];
+        let end = locations(&grid, 'E')[0];
+        assert_eq!(fewest_steps(&grid, start, end), Some(31));
+    }
+
+    #[test]
+    fn test_part_2() {
+        let input = fs::read_to_string("test-input.txt").expect("failed to read input file");
+        let grid: Vec<&[u8]> = input.trim().split('\n').map(|s| s.as_bytes()).collect();
+        let aes = locations(&grid, 'a');
+        let end = locations(&grid, 'E')[0];
+
+        let shortest_a_to_end: usize = aes
+            .into_iter()
+            .flat_map(|a| fewest_steps(&grid, a, end))
+            .min()
+            .unwrap();
+
+        assert_eq!(shortest_a_to_end, 29);
     }
 
     #[test]
