@@ -16,13 +16,10 @@ fn main() {
     let mut aes = locations(&grid, 'a');
     aes.push(start);
 
-    match fewest_steps(&grid, start, end) {
-        Some(n) => {
-            println!("The shortest route from start to end is {n} steps",);
-        }
-        None => {
-            println!("Couldn't find a route from the start to the end!");
-        }
+    if let Some(n) = fewest_steps(&grid, start, end) {
+        println!("The shortest route from start to end is {n} steps",);
+    } else {
+        println!("Couldn't find a route from the start to the end!");
     }
 
     let shortest_a_to_end = aes
@@ -37,7 +34,6 @@ fn main() {
     );
 }
 
-// returns the locations of the given char in the grid
 fn locations(grid: &[&[u8]], c: char) -> Vec<(usize, usize)> {
     let mut results = vec![];
     for (rowi, row) in grid.iter().enumerate() {
@@ -59,14 +55,9 @@ fn fewest_steps(grid: &[&[u8]], start: (usize, usize), end: (usize, usize)) -> O
     queue.push_back(start);
 
     while let Some((row, col)) = queue.pop_front() {
-        if (row, col) == end {
-            continue;
-        }
-
-        let current_steps: usize = steps[&(row, col)] + 1;
-
         update_possible_moves(grid, &mut possible_moves, row, col);
 
+        let current_steps: usize = steps[&(row, col)] + 1;
         for (adj_row, adj_col) in possible_moves.into_iter().flatten() {
             match steps.get_mut(&(adj_row, adj_col)) {
                 Some(prev_steps) => {
@@ -76,7 +67,9 @@ fn fewest_steps(grid: &[&[u8]], start: (usize, usize), end: (usize, usize)) -> O
                 }
                 None => {
                     steps.insert((adj_row, adj_col), current_steps);
-                    queue.push_back((adj_row, adj_col));
+                    if (adj_row, adj_col) != end {
+                        queue.push_back((adj_row, adj_col));
+                    }
                 }
             }
         }
@@ -95,43 +88,34 @@ fn update_possible_moves(
     let max_col_index = grid[0].len() - 1;
     let here = grid[row][col];
 
-    // top
-    possible_moves[0] = match row > 0 && legal_move(here as i8, grid[row - 1][col] as i8) {
+    possible_moves[0] = match row > 0 && legal_move(here, grid[row - 1][col]) {
         true => Some((row - 1, col)),
         false => None,
     };
-
-    // right
-    possible_moves[1] =
-        match col < max_col_index && legal_move(here as i8, grid[row][col + 1] as i8) {
-            true => Some((row, col + 1)),
-            false => None,
-        };
-
-    // bottom
-    possible_moves[2] =
-        match row < max_row_index && legal_move(here as i8, grid[row + 1][col] as i8) {
-            true => Some((row + 1, col)),
-            false => None,
-        };
-
-    // left
-    possible_moves[3] = match col > 0 && legal_move(here as i8, grid[row][col - 1] as i8) {
+    possible_moves[1] = match col < max_col_index && legal_move(here, grid[row][col + 1]) {
+        true => Some((row, col + 1)),
+        false => None,
+    };
+    possible_moves[2] = match row < max_row_index && legal_move(here, grid[row + 1][col]) {
+        true => Some((row + 1, col)),
+        false => None,
+    };
+    possible_moves[3] = match col > 0 && legal_move(here, grid[row][col - 1]) {
         true => Some((row, col - 1)),
         false => None,
     };
 }
 
-fn translate(height: i8) -> i8 {
-    match height as u8 {
-        b'S' => b'a' as i8,
-        b'E' => b'z' as i8,
-        n => n as i8,
-    }
+fn legal_move(from: u8, to: u8) -> bool {
+    translate(to) - translate(from) < 2
 }
 
-fn legal_move(from: i8, to: i8) -> bool {
-    translate(to) - translate(from) < 2
+fn translate(height: u8) -> i8 {
+    (match height {
+        b'S' => b'a',
+        b'E' => b'z',
+        n => n,
+    }) as i8
 }
 
 #[cfg(test)]
