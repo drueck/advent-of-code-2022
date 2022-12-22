@@ -42,21 +42,16 @@ fn parse_input(input: &str) -> Vec<Sensor> {
 }
 
 fn part_1(sensors: &[Sensor], y: isize) -> usize {
-    let mut points = HashSet::new();
+    let mut xs = HashSet::new();
     for sensor in sensors {
         for x in sensor.x_range(y) {
-            let point = Point::new(x, y);
-            match point == sensor.closest_beacon {
-                true => {
-                    points.remove(&point);
-                }
-                false => {
-                    points.insert(point);
-                }
-            }
+            xs.insert(x);
         }
     }
-    points.len()
+    for sensor in sensors.iter().filter(|sensor| sensor.closest_beacon.y == y) {
+        xs.remove(&sensor.closest_beacon.x);
+    }
+    xs.len()
 }
 
 #[cfg(test)]
