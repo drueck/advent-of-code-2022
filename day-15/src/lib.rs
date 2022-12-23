@@ -37,14 +37,18 @@ impl Sensor {
     }
 
     // what range of x values for the given y can this sensor see?
-    pub fn x_range(&self, y: isize) -> XRange {
-        let x_offset = self.range - (self.location.y - y).abs();
-        XRange::new(self.location.x - x_offset, self.location.x + x_offset + 1)
-        // (self.location.x - x_offset)..(self.location.x + x_offset + 1)
+    pub fn x_range(&self, y: isize) -> Option<XRange> {
+        match self.range - (self.location.y - y).abs() {
+            x_offset if x_offset >= 0 => Some(XRange::new(
+                self.location.x - x_offset,
+                self.location.x + x_offset,
+            )),
+            _ => None,
+        }
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]
 pub struct XRange {
     pub min: isize,
     pub max: isize,
@@ -52,6 +56,7 @@ pub struct XRange {
 
 impl XRange {
     pub fn new(min: isize, max: isize) -> Self {
+        assert!(min <= max);
         Self { min, max }
     }
 
@@ -73,14 +78,31 @@ impl XRange {
     }
 
     pub fn merge(&mut self, other: &Self) {
-        assert!(self.mergeable(&other));
+        if !self.mergeable(&other) {
+            assert!(self.mergeable(&other));
+        }
 
         self.min = min(self.min, other.min);
         self.max = max(self.max, other.max);
     }
 
+    pub fn constrained(&self, constraint: &Self) -> Option<Self> {
+        if self.max < constraint.min || self.min > constraint.max {
+            return None;
+        }
+
+        let mut range = self.clone();
+        if range.min < constraint.min && range.max >= constraint.min {
+            range.min = constraint.min;
+        }
+        if range.max > constraint.max && range.min <= constraint.max {
+            range.max = constraint.max;
+        }
+        Some(range)
+    }
+
     pub fn len(&self) -> usize {
-        (self.max - self.min).abs() as usize
+        (self.max - self.min).abs() as usize + 1
     }
 }
 
@@ -97,21 +119,17 @@ impl Coverage {
     }
 
     pub fn add_range(&mut self, mut new_range: XRange) {
-        // if the new range contains any existing range, remove the existing range
         self.ranges.retain(|range| !new_range.contains(&range));
 
-        // remove any intersecting ranges
         let mergeable_ranges: Vec<_> = self
             .ranges
             .drain_filter(|range| range.mergeable(&new_range))
             .collect();
 
-        // merge them with the new range
         for range in mergeable_ranges {
             new_range.merge(&range);
         }
 
-        // add the new range
         self.ranges.insert(new_range);
     }
 
@@ -125,10 +143,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_x_range() {
+    fn test_point_manhattan_distance() {
+        let sensor_location = Point::new(8, 7);
+        let closest_beacon = Point::new(2, 10);
+        assert_eq!(sensor_location.manhattan_distance(&closest_beacon), 9);
+    }
+
+    #[test]
+    fn test_sensor_x_range() {
         let sensor = Sensor::new(Point::new(8, 7), Point::new(2, 10));
         assert_eq!(sensor.range, 9);
-        assert_eq!(sensor.x_range(10), XRange::new(2, 15));
+        assert_eq!(sensor.x_range(10), Some(XRange::new(2, 14)));
+        assert_eq!(sensor.x_range(100), None);
     }
 
     #[test]
@@ -158,5 +184,28 @@ mod tests {
 
         range.merge(&XRange::new(-50, -15));
         assert_eq!(range, XRange::new(-50, 50));
+    }
+
+    #[test]
+    fn test_x_range_constrained() {
+        let search_space = XRange::new(0, 20);
+        assert_eq!(XRange::new(-20, -1).constrained(&search_space), None);
+
+        assert_eq!(
+            XRange::new(-20, 0).constrained(&search_space),
+            Some(XRange::new(0, 0))
+        );
+
+        assert_eq!(
+            XRange::new(-20, 5).constrained(&search_space),
+            Some(XRange::new(0, 5))
+        );
+
+        assert_eq!(
+            XRange::new(5, 25).constrained(&search_space),
+            Some(XRange::new(5, 20))
+        );
+
+        assert_eq!(XRange::new(21, 25).constrained(&search_space), None);
     }
 }

@@ -2,7 +2,7 @@
 // https://adventofcode.com/2022/day/15
 // Usage: `cargo run <input-file>`
 
-use day_15::{Coverage, Point, Sensor};
+use day_15::{Coverage, Point, Sensor, XRange};
 use regex::Regex;
 use std::collections::HashSet;
 use std::env;
@@ -10,18 +10,24 @@ use std::fs;
 
 fn main() {
     let input_filename = env::args().nth(1).expect("please supply an input filename");
-    let y = env::args()
-        .nth(2)
-        .expect("Please specify the y coordinate to check")
-        .parse()
-        .expect("Invalid y coordinate");
-    let input = fs::read_to_string(input_filename).expect("failed to read input file");
+    let input = fs::read_to_string(&input_filename).expect("failed to read input file");
     let sensors = parse_input(&input);
+
+    let (y, search_space) = match &input_filename[..] {
+        "test-input.txt" => (10, XRange::new(0, 20)),
+        "input.txt" => (2_000_000, XRange::new(0, 4_000_000)),
+        _ => panic!("Please use either input.txt or test-input.txt"),
+    };
 
     println!(
         "The number of locations on the given y that cannot contain a beacon are: {}",
         part_1(&sensors, y)
-    )
+    );
+
+    println!(
+        "The tuning frequency for the missing beacon is: {}",
+        part_2(&sensors, &search_space).expect("couldn't find the missing beacon!")
+    );
 }
 
 fn parse_input(input: &str) -> Vec<Sensor> {
@@ -43,17 +49,49 @@ fn parse_input(input: &str) -> Vec<Sensor> {
 
 fn part_1(sensors: &[Sensor], y: isize) -> usize {
     let mut coverage = Coverage::new();
-    for sensor in sensors {
-        coverage.add_range(sensor.x_range(y));
+    for x_range in sensors.iter().flat_map(|sensor| sensor.x_range(y)) {
+        coverage.add_range(x_range);
     }
 
-    let beacons_in_row: HashSet<isize> = sensors
+    let beacon_locations_in_row: HashSet<isize> = sensors
         .iter()
         .filter(|sensor| sensor.closest_beacon.y == y)
         .map(|sensor| sensor.closest_beacon.x)
         .collect();
 
-    coverage.len() - beacons_in_row.len()
+    coverage.len() - beacon_locations_in_row.len()
+}
+
+fn part_2(sensors: &[Sensor], search_space: &XRange) -> Option<isize> {
+    for y in search_space.min..=search_space.max {
+        let mut coverage = Coverage::new();
+        for x_range in sensors
+            .iter()
+            .flat_map(|sensor| sensor.x_range(y)?.constrained(&search_space))
+        {
+            coverage.add_range(x_range);
+        }
+
+        if coverage.len() < search_space.len() {
+            let mut ranges: Vec<_> = coverage.ranges.iter().collect();
+            let x = match ranges.len() {
+                1 => {
+                    if ranges[0].min == search_space.min + 1 {
+                        search_space.min
+                    } else {
+                        search_space.max
+                    }
+                }
+                2 => {
+                    ranges.sort();
+                    ranges[0].max + 1
+                }
+                n => panic!("Expected either one or two ranges, got {n}"),
+            };
+            return Some(x * 4_000_000 + y);
+        }
+    }
+    None
 }
 
 #[cfg(test)]
@@ -77,34 +115,16 @@ mod tests {
     }
 
     #[test]
-    fn test_manhattan_distance() {
-        let sensor_location = Point::new(8, 7);
-        let closest_beacon = Point::new(2, 10);
-        assert_eq!(sensor_location.manhattan_distance(&closest_beacon), 9);
-    }
-
-    #[test]
     fn test_part_1() {
         let input = fs::read_to_string("test-input.txt").unwrap();
         let sensors = parse_input(&input);
         assert_eq!(part_1(&sensors, 10), 26);
     }
 
-    // #[test]
-    // fn test_part_2() {
-    //     let input = fs::read_to_string("test-input.txt").unwrap();
-    //     let sensors = parse_input(&input);
-    //     // find the y that has one x open
-    //     for y in 0..=20 {
-    //         let x_coverage: isize = sensors
-    //             .iter()
-    //             .map(|s| {
-    //                 let range = s.x_range(y);
-    //                 (min(range.end - 1, 20) - max(range.start, 0)).abs()
-    //             })
-    //             .sum();
-    //         println!("x coverage for y = {y} is {x_coverage}");
-    //     }
-    //     assert!(false);
-    // }
+    #[test]
+    fn test_part_2() {
+        let input = fs::read_to_string("test-input.txt").unwrap();
+        let sensors = &parse_input(&input)[..];
+        assert_eq!(part_2(&sensors, &XRange::new(0, 20)), Some(56_000_011));
+    }
 }
