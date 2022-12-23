@@ -2,7 +2,7 @@
 // https://adventofcode.com/2022/day/15
 // Usage: `cargo run <input-file>`
 
-use day_15::{Point, Sensor};
+use day_15::{Coverage, Point, Sensor};
 use regex::Regex;
 use std::collections::HashSet;
 use std::env;
@@ -42,16 +42,18 @@ fn parse_input(input: &str) -> Vec<Sensor> {
 }
 
 fn part_1(sensors: &[Sensor], y: isize) -> usize {
-    let mut xs = HashSet::new();
+    let mut coverage = Coverage::new();
     for sensor in sensors {
-        for x in sensor.x_range(y) {
-            xs.insert(x);
-        }
+        coverage.add_range(sensor.x_range(y));
     }
-    for sensor in sensors.iter().filter(|sensor| sensor.closest_beacon.y == y) {
-        xs.remove(&sensor.closest_beacon.x);
-    }
-    xs.len()
+
+    let beacons_in_row: HashSet<isize> = sensors
+        .iter()
+        .filter(|sensor| sensor.closest_beacon.y == y)
+        .map(|sensor| sensor.closest_beacon.x)
+        .collect();
+
+    coverage.len() - beacons_in_row.len()
 }
 
 #[cfg(test)]
@@ -87,4 +89,22 @@ mod tests {
         let sensors = parse_input(&input);
         assert_eq!(part_1(&sensors, 10), 26);
     }
+
+    // #[test]
+    // fn test_part_2() {
+    //     let input = fs::read_to_string("test-input.txt").unwrap();
+    //     let sensors = parse_input(&input);
+    //     // find the y that has one x open
+    //     for y in 0..=20 {
+    //         let x_coverage: isize = sensors
+    //             .iter()
+    //             .map(|s| {
+    //                 let range = s.x_range(y);
+    //                 (min(range.end - 1, 20) - max(range.start, 0)).abs()
+    //             })
+    //             .sum();
+    //         println!("x coverage for y = {y} is {x_coverage}");
+    //     }
+    //     assert!(false);
+    // }
 }
