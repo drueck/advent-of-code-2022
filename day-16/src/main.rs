@@ -25,6 +25,10 @@ fn part_1(valves: &HashMap<&str, Valve>) -> usize {
     let mut queue: VecDeque<State> = VecDeque::new();
 
     let starting_valve = valves.get(&"AA").unwrap();
+    let valves_worth_opening = valves
+        .iter()
+        .filter(|(_, valve)| valve.flow_rate > 0)
+        .count();
 
     queue.push_back(State::new(
         starting_valve.id,
@@ -42,7 +46,9 @@ fn part_1(valves: &HashMap<&str, Valve>) -> usize {
 
             if next_state.total_pressure > *best_pressure {
                 *best_pressure = next_state.total_pressure;
-                queue.push_back(next_state);
+                if next_state.open_valves.len() < valves_worth_opening {
+                    queue.push_back(next_state);
+                }
             }
         }
     }
@@ -232,30 +238,6 @@ mod tests {
         );
         assert_eq!(valves.get("JJ"), Some(&Valve::new("JJ", 21, vec!["II"])));
     }
-
-    // #[test]
-    // fn test_next_states() {
-    //     let input = fs::read_to_string("test-input.txt").unwrap();
-    //     let valves = parse_input(&input);
-
-    //     let starting_valve = valves.get(&"AA").unwrap();
-    //     let aa = State::new(
-    //         starting_valve.id,
-    //         HashSet::new(),
-    //         HashSet::new(),
-    //         0,
-    //         0,
-    //         vec![],
-    //     );
-    //     let dd_open = &next_states(&valves, &aa)[1];
-    //     let cc = &next_states(&valves, &dd_open)[0];
-    //     let bb_open = &next_states(&valves, &cc)[1];
-    //     println!("bb open: {:?}", bb_open);
-    //     for state in next_states(&valves, &bb_open) {
-    //         println!("{:?}", state)
-    //     }
-    //     assert!(false);
-    // }
 
     #[test]
     fn test_part_1() {
