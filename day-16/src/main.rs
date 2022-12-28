@@ -11,6 +11,7 @@ use Action::{Open, Visit, Wait};
 use Strategy::{Alone, WithElephant};
 
 const TIME_LIMIT: usize = 30;
+const MAYBE_SKIP_LIMIT: usize = 4;
 
 fn main() {
     let input_filename = env::args().nth(1).expect("please supply an input filename");
@@ -116,8 +117,13 @@ pub fn next_moves<'a>(
             }
         } else {
             // closed - we have two option here, so add both of them
-            // visit
-            next_moves.push(Move::new(id, valves_in_path.clone(), Visit, minutes, 0));
+            // --
+            // visit but don't open
+            // we only want to pass by without opening very low flow rate valves
+            let v = valves.get(id).unwrap();
+            if v.flow_rate < MAYBE_SKIP_LIMIT {
+                next_moves.push(Move::new(id, valves_in_path.clone(), Visit, minutes, 0));
+            }
             // open
             next_moves.push(Move::new(
                 id,
@@ -125,7 +131,7 @@ pub fn next_moves<'a>(
                 Open,
                 minutes + 1,
                 valve.flow_rate * (TIME_LIMIT - minutes - 1),
-            ))
+            ));
         }
     }
 
@@ -136,16 +142,20 @@ pub fn next_global_states<'a>(
     valves: &HashMap<&str, Valve<'a>>,
     global_state: &GlobalState<'a>,
 ) -> Vec<GlobalState<'a>> {
-    let mut next_global_states = vec![];
-
     let next_human_moves = next_moves(&global_state.human_state, &global_state, &valves);
     let next_elephant_moves = match &global_state.elephant_state {
         Some(elephant_state) => next_moves(&elephant_state, &global_state, &valves),
         None => vec![Move::new(&"AA", vec![], Wait, 0, 0)],
     };
 
+    if next_human_moves.is_empty() || next_elephant_moves.is_empty() {
+        return vec![];
+    }
+
+    let mut next_global_states = vec![];
+
     for (human_move, elephant_move) in iproduct!(&next_human_moves, &next_elephant_moves) {
-        if human_move.opening_same_valve_as(&elephant_move) {
+        if human_move.ineffective_combination_with(&elephant_move) {
             continue;
         }
         let mut next_global_state = (*global_state).clone();
@@ -278,8 +288,9 @@ impl<'a> Move<'a> {
         }
     }
 
-    pub fn opening_same_valve_as(&self, other: &Self) -> bool {
-        self.valve_id == other.valve_id && self.action == Open && other.action == Open
+    pub fn ineffective_combination_with(&self, other: &Self) -> bool {
+        (self.valve_id == other.valve_id && self.action == other.action)
+            || (self.action == Visit && other.action == Visit)
     }
 }
 
