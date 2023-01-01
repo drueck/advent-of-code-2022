@@ -79,16 +79,13 @@ impl Chamber {
             // if we have a lot of rocks, start looking for a cycle
             if rock_num % 10_000 == 0 {
                 if let Some((cycle_start, cycle)) = self.try_detect_first_cycle() {
-                    let height_per_cycle: usize = cycle.iter().sum();
                     let before_cycles = cycle_start;
                     let after_cycles = (num_rocks - before_cycles) % cycle.len();
                     let num_cycles = (num_rocks - before_cycles) / cycle.len();
 
-                    let height_outside_of_cycles = self.height_after_rocks_stopped(
-                        before_cycles + after_cycles,
-                        &gusts,
-                        &rocks,
-                    );
+                    let height_per_cycle: usize = cycle.iter().sum();
+                    let height_outside_of_cycles: usize =
+                        self.diffs[0..(before_cycles + after_cycles)].iter().sum();
 
                     return height_outside_of_cycles + (height_per_cycle * num_cycles);
                 }
