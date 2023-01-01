@@ -171,32 +171,15 @@ impl Chamber {
     // returns Some(start, cycle) or None
     // where start is the index of the first occurence of the cycle and cycle is the sequence
     fn try_detect_first_cycle(&self) -> Option<(usize, Vec<usize>)> {
-        // say the end of the diffs is like 12312312312
-        // the cycle that try_detect_cycle will return is 312, which does repeat
-        // but what we actually want is 123, which is the *first* thing that repeats
-        // so we want to rotate the digits until we find our "123" and also get the first occurence
         let cycle = self.try_detect_cycle()?;
-        let cycle_len = cycle.len();
 
-        let first_occurence = |seq: &[usize]| {
-            self.diffs
-                .windows(cycle_len)
-                .position(|w| w == seq)
-                .unwrap()
-        };
+        let start = self
+            .diffs
+            .windows(cycle.len())
+            .position(|w| w == cycle)
+            .unwrap();
 
-        let mut candidate = Vec::from(&cycle[..]);
-        let mut best_start = first_occurence(&candidate);
-
-        for _ in 0..cycle.len() {
-            candidate.rotate_left(1);
-            best_start = first_occurence(&candidate).min(best_start);
-        }
-
-        let best_candidate = Vec::from(&self.diffs[best_start..(best_start + cycle.len())]);
-        assert_eq!(cycle.len(), best_candidate.len());
-
-        Some((best_start, best_candidate))
+        Some((start, cycle))
     }
 
     // returns Some(cycle) or None where the cycle is the sequence of height diffs
